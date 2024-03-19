@@ -1,0 +1,57 @@
+#include <Arduino.h>
+#include <WiFi.h>
+#include "time.h"
+
+
+const char* ssid = "**********";
+const char* password = "*********";
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = -18000;
+const int   daylightOffset_sec = 0;
+
+
+// GPIO pins for the LEDs
+const int hoursPins[] = {2, 4, 5, 18, 19}; // hours
+const int minutesPins[] = {21, 22, 23, 25, 26, 27}; // minutes
+
+void displayBinaryTime(int value, const int *pins, int numPins) {
+  for (int i = 0; i < numPins; i++) {
+    digitalWrite(pins[i], (value >> i) & 1);
+  }
+}
+
+// initialize WiFi and pins
+void setup() {
+  Serial.begin(115200);
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi..");
+  }
+
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+  for (int pin : hoursPins) pinMode(pin, OUTPUT);
+  for (int pin : minutesPins) pinMode(pin, OUTPUT);
+}
+
+
+
+void loop() {
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+
+  // Get current time
+  int hours = timeinfo.tm_hour;
+  int minutes = timeinfo.tm_min;
+
+  // Display the time in binary on the LEDs
+  displayBinaryTime(hours, hoursPins, sizeof(hoursPins) / sizeof(hoursPins[0]));
+  displayBinaryTime(minutes, minutesPins, sizeof(minutesPins) / sizeof(minutesPins[0]));
+
+  delay(1000); // Update every second
+}
